@@ -1,0 +1,23 @@
+# ZK Implementations
+
+This repository contains all my Zero-Knowledge (ZK) implementations.
+
+## List of Implementations
+
+1. [Implementation 1](./implementation1)
+2. [Implementation 2](./implementation2)
+3. [Implementation 3](./implementation3)
+
+## Getting Started
+
+To get started with any of the implementations, navigate to the respective directory and follow the instructions in the README file.
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/)
+- [npm](https://www.npmjs.com/)
+- [zk-SNARK library](https://example.com/zk-snark-library)
+
+## Installation
+
+Clone the repository:
