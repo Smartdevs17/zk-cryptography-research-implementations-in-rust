@@ -2,7 +2,7 @@ use ark_ff::PrimeField;
 
 #[derive(Debug, Clone)]
 pub struct DensePolynomial<F: PrimeField> {
-    coefficients: Vec<F>,
+   pub coefficients: Vec<F>,
 }
 
 impl<F: PrimeField> DensePolynomial<F> {
