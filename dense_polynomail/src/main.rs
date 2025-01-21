@@ -1,19 +1,74 @@
-struct DensePolynomial{
+struct DensePolynomial {
     coefficients: Vec<f64>,
 }
 
-impl DensePolynomial{
-    fn new(coefficients: Vec<f64>) -> DensePolynomial{ DensePolynomial{coefficients}}
+impl DensePolynomial {
+    fn new(coefficients: Vec<f64>) -> DensePolynomial {
+        DensePolynomial { coefficients }
+    }
 
-    fn degree(&self) -> usize {self.coefficients.len() - 1}
+    fn degree(&self) -> usize {
+        self.coefficients.len() - 1
+    }
 
     fn evaluate(&self, x: f64) -> f64 {
-        self.coefficients.iter().enumerate().map(|(i, &coef)| coef * x.powi(i as i32)).sum()
+        self.coefficients
+            .iter()
+            .enumerate()
+            .map(|(i, &coef)| coef * x.powi(i as i32))
+            .sum()
+    }
+
+    fn interpolate(points: Vec<(f64, f64)>) -> Self{
+        if points.is_empty(){
+            return DensePolynomial::new(vec![0.0])
+        }
+
+        let n = points.len();
+        let mut result = vec![0.0; n];
+        for i in 0..n{
+            let (xi , yi) = points[i];
+
+            let mut basis = vec![1.0];
+            let mut factor = 1.0;
+
+            for j in 0..n {
+                if i != j {
+                    let (xj, _) = points[j];
+                    factor *= xi - xj;
+
+                    let mut new_basis = vec![0.0; basis.len() + 1];
+                    for k in 0..basis.len() {
+                        new_basis[k + 1] += basis[k]; //x-term
+                        new_basis[k] -= basis[k] * xj; // constant term
+                    }
+                    basis = new_basis;
+                }
+            }
+            let scale = yi / factor;
+            for k in 0..basis.len() {
+                result[k] += scale * basis[k]
+            }
+
+            for coef in result.iter_mut() {
+                if coef.abs() < 1e-10 {
+                    *coef = 0.0;
+                }
+            }
+            while result.len() > 1 && result.last().map_or(false, |&x| x == 0.0) {
+                result.pop();
+            }
+    
+        }
+        DensePolynomial::new(result)
     }
 }
 
-fn main(){
+fn main() {
     let result = DensePolynomial::new(vec![5.0, 2.0]);
     println!("The degree is: {}", result.degree());
     println!("The computed result: {}", result.evaluate(2.0));
+    let points = vec![(1.0,2.0), (2.0,4.0), (4.0,8.0)];
+    let poly = DensePolynomial::interpolate(points);
+    println!("Coefficients: {:?}", poly.coefficients);
 }
