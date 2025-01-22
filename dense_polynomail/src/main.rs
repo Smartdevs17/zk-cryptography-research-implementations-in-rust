@@ -62,6 +62,19 @@ impl DensePolynomial {
         }
         DensePolynomial::new(result)
     }
+
+    //f(x) = f(x-1) + f(x-2)
+    fn fibonacci_poly(x: f64, points: Vec<(f64, f64)>) -> f64{
+        let fibonacci = Self::interpolate(points);
+        // let y = fibonacci.evaluate(x);
+        let y1 = fibonacci.evaluate(x-1.0);
+        let y2 = fibonacci.evaluate(x-2.0);
+        y1 + y2
+
+
+    }
+
+
 }
 
 fn main() {
@@ -71,4 +84,23 @@ fn main() {
     let points = vec![(1.0,2.0), (2.0,4.0), (4.0,8.0)];
     let poly = DensePolynomial::interpolate(points);
     println!("Coefficients: {:?}", poly.coefficients);
+}
+
+#[cfg(test)]
+
+mod tests{
+    use crate::DensePolynomial;
+
+
+    #[test]
+    fn test_constraint() {
+        let points = vec![(0.0,1.0), (1.0, 1.0), (2.0,2.0), (3.0,3.0), (4.0, 5.0), (5.0, 8.0),(6.0,13.0), (7.0,21.0)];
+        let points1 = vec![(0.0,1.0), (1.0, 1.0), (2.0,2.0), (3.0,3.0), (4.0, 5.0), (5.0, 8.0),(6.0,13.0), (7.0,21.0)];
+        let poly = DensePolynomial::fibonacci_poly(7.0, points);
+        let poly1 = DensePolynomial::interpolate(points1);
+        let y = poly1.evaluate(7.0);
+        assert_eq!(y.round(), poly.round());
+
+    }
+
 }
