@@ -1,8 +1,10 @@
 [package]
-name = "mult_poly"
+name = "sumcheck_protocol"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 ark-bn254 = "0.5.0"
 ark-ff = "0.5.0"
+ark-poly = "0.5.0"
+sha3 = "0.10.8"
