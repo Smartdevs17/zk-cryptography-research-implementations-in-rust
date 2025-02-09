@@ -4,9 +4,10 @@ This repository contains all my Zero-Knowledge (ZK) implementations.
 
 ## List of Implementations
 
-1. [Implementation 1](./implementation1)
-2. [Implementation 2](./implementation2)
-3. [Implementation 3](./implementation3)
+1. [Prime Fields](./prime_fields)
+2. [Multilinear Polynomial](./multilinear_poly)
+3. [Sum-Check Protocol](./sumcheck_protocol)
+4. [Circuits](./circuits)
 
 ## Getting Started
 
