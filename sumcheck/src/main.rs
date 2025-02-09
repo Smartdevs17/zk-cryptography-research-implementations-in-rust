@@ -14,7 +14,6 @@ use std::marker::PhantomData;
 struct SumCheckProof<F: PrimeField> {
     claimed_sum: F,
     round_polynomials: Vec<DensePolynomial<F>>,
-    challenges: Vec<F>,
     final_evaluation: F,
 }
 
@@ -102,7 +101,6 @@ impl<F: PrimeField> Prover<F> {
         SumCheckProof {
             claimed_sum,
             round_polynomials,
-            challenges,
             final_evaluation,
         }
     }

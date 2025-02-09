@@ -1,1 +1,0 @@
-/Users/smartdev/Documents/zk-cohort/prime_fields/shamir_prime/target/debug/shamir_prime: /Users/smartdev/Documents/zk-cohort/prime_fields/prime_polynomail/src/lib.rs /Users/smartdev/Documents/zk-cohort/prime_fields/shamir_prime/src/main.rs

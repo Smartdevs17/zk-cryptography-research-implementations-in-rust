@@ -1,1 +1,0 @@
-/Users/smartdev/Documents/zk-cohort/shamir_secret_sharing/target/debug/shamir_secret_sharing: /Users/smartdev/Documents/zk-cohort/polynomial/src/lib.rs /Users/smartdev/Documents/zk-cohort/shamir_secret_sharing/src/main.rs

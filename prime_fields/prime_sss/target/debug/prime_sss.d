@@ -1,1 +1,0 @@
-/Users/smartdev/Documents/zk-cohort/prime_fields/prime_sss/target/debug/prime_sss: /Users/smartdev/Documents/zk-cohort/prime_fields/prime_polynomail/src/lib.rs /Users/smartdev/Documents/zk-cohort/prime_fields/prime_sss/src/main.rs
