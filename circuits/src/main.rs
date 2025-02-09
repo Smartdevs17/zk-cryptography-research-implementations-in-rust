@@ -57,6 +57,48 @@ impl<F: PrimeField> Circuit<F> {
         }
     }
 
+    fn addi(&self, layer_index: usize, all_values: &Vec<F>) -> Option<Vec<F>> {
+        if layer_index >= self.layers.len() {
+            return None;
+        }
+    
+        let mut results = Vec::new();
+        for gate in &self.layers[layer_index] {
+            if let Gate::Add(a, b) = gate {
+                // Check if indices are within bounds
+                if *a >= all_values.len() || *b >= all_values.len() {
+                    return None; // Return None if indices are out of bounds
+                }
+                results.push(all_values[*a] + all_values[*b]);
+            }
+        }
+        Some(results)
+    }
+
+    fn muli(&self, layer_index: usize, all_values: &Vec<F>) -> Option<Vec<F>> {
+        if layer_index >= self.layers.len() {
+            return None;
+        }
+    
+        let mut results = Vec::new();
+        for gate in &self.layers[layer_index] {
+            if let Gate::Mul(a, b) = gate {
+                // Check if indices are within bounds
+                if *a >= all_values.len() || *b >= all_values.len() {
+                    return None; // Return None if indices are out of bounds
+                }
+                results.push(all_values[*a] * all_values[*b]);
+            }
+        }
+    
+        // Return None if there are no Mul gates in the layer
+        if results.is_empty() {
+            None
+        } else {
+            Some(results)
+        }
+    }
+
 
 }
 
@@ -273,5 +315,81 @@ mod tests {
         // Test out of bounds layer
         let layer_5_eval = circuit.get_layer_evaluation(inputs, 5);
         assert_eq!(layer_5_eval, None);
+    }
+
+
+    #[test]
+    fn test_addi() {
+        // Define a simple circuit with one layer and one Add gate
+        let circuit = Circuit {
+            layers: vec![vec![Gate::Add(0, 1)]],
+            _marker: PhantomData,
+        };
+
+        // Define input values
+        let all_values = vec![Fr::from(2), Fr::from(3)];
+
+        // Test the addi function
+        let result = circuit.addi(0, &all_values);
+        assert_eq!(result, Some(vec![Fr::from(5)])); // 2 + 3 = 5
+
+        // Test out-of-bounds indices
+        let invalid_circuit = Circuit {
+            layers: vec![vec![Gate::Add(2, 3)]], // Indices 2 and 3 are out of bounds
+            _marker: PhantomData,
+        };
+        let invalid_result = invalid_circuit.addi(0, &all_values);
+        assert_eq!(invalid_result, None); // Should return None for out-of-bounds indices
+    }
+
+    #[test]
+    fn test_addi_with_more_inputs() {
+        let input1 = Fr::from(1);
+        let input2 = Fr::from(2);
+        let input3 = Fr::from(3);
+        let input4 = Fr::from(4);
+
+        let circuit = Circuit {
+            layers: vec![vec![Gate::Add(0, 1), Gate::Add(2, 3)]],
+            _marker: PhantomData,
+        };
+
+        let all_values = vec![input1, input2, input3, input4];
+
+        let result = circuit.addi(0, &all_values);
+        assert_eq!(result, Some(vec![input1 + input2, input3 + input4])); // [1+2=3, 3+4=7]
+
+        // Test out-of-bounds indices
+        let invalid_circuit = Circuit {
+            layers: vec![vec![Gate::Add(4, 5)]], // Indices 4 and 5 are out of bounds
+            _marker: PhantomData,
+        };
+        let invalid_result = invalid_circuit.addi(0, &all_values);
+        assert_eq!(invalid_result, None); // Should return None for out-of-bounds indices
+    }
+
+    #[test]
+    fn test_muli() {
+        let input1 = Fr::from(1);
+        let input2 = Fr::from(2);
+        let input3 = Fr::from(3);
+        let input4 = Fr::from(4);
+
+        let mut circuit = Circuit::new();
+        // Layer 1: [1,2,3,4] -> [1+2=3, 3*4=12]
+        circuit.add_layer(vec![Gate::Add(0, 1), Gate::Mul(2, 3)]);
+        // Layer 2: Available values [1,2,3,4,3,12] -> [3+12=15]
+        circuit.add_layer(vec![Gate::Add(4, 5)]);
+
+        let inputs = vec![input1, input2, input3, input4];
+        let evaluation = circuit.evaluate(inputs.clone());
+
+        // Test muli for layer 1
+        let muli_layer_1 = circuit.muli(0, &inputs);
+        assert_eq!(muli_layer_1, Some(vec![input3 * input4]));
+
+        // Test muli for out of bounds layer
+        let muli_layer_2 = circuit.muli(1, &evaluation[1]);
+        assert_eq!(muli_layer_2, None);
     }
 }
