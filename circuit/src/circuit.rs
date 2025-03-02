@@ -2,31 +2,37 @@ use ark_ff::PrimeField;
 use ark_bn254::Fr;
 use std::marker::PhantomData;
 
+#[derive(Debug)]
+pub enum CIRCUIT_OP{
+  ADD,
+  MUL
+}
+
 #[derive(Debug, Clone)]
-enum Gate {
+pub enum Gate {
     Add(usize, usize), // Indexes of the values to add
     Mul(usize, usize), // Indexes of the values to multiply
 }
 
 #[derive(Debug, Clone)]
-struct Circuit<F: PrimeField> {
+pub struct Circuit<F: PrimeField> {
     layers: Vec<Vec<Gate>>, // Each layer contains a list of gates
     _marker: PhantomData<F>,
 }
 
 impl<F: PrimeField> Circuit<F> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             layers: Vec::new(),
             _marker: PhantomData,
         }
     }
 
-    fn add_layer(&mut self, layer: Vec<Gate>) {
+   pub fn add_layer(&mut self, layer: Vec<Gate>) {
         self.layers.push(layer);
     }
 
-    fn evaluate(&self, inputs: Vec<F>) -> Vec<Vec<F>> {
+    pub fn evaluate(&self, inputs: Vec<F>) -> Vec<Vec<F>> {
         let mut evaluation_steps = vec![inputs.clone()];
         let mut all_values = inputs; // Contains all values: inputs + intermediate results
 
@@ -48,7 +54,7 @@ impl<F: PrimeField> Circuit<F> {
         evaluation_steps
     }
 
-    fn get_layer_evaluation(&self, inputs: Vec<F>, layer_index: usize) -> Option<Vec<F>> {
+    pub fn get_layer_evaluation(&self, inputs: Vec<F>, layer_index: usize) -> Option<Vec<F>> {
         let evaluation_steps = self.evaluate(inputs);
         if layer_index < evaluation_steps.len() {
             Some(evaluation_steps[layer_index].clone())
@@ -57,7 +63,7 @@ impl<F: PrimeField> Circuit<F> {
         }
     }
 
-    fn addi(&self, layer_index: usize, all_values: &Vec<F>) -> Option<Vec<F>> {
+    pub fn addi(&self, layer_index: usize, all_values: &Vec<F>) -> Option<Vec<F>> {
         if layer_index >= self.layers.len() {
             return None;
         }
@@ -75,7 +81,7 @@ impl<F: PrimeField> Circuit<F> {
         Some(results)
     }
 
-    fn muli(&self, layer_index: usize, all_values: &Vec<F>) -> Option<Vec<F>> {
+    pub fn muli(&self, layer_index: usize, all_values: &Vec<F>) -> Option<Vec<F>> {
         if layer_index >= self.layers.len() {
             return None;
         }

@@ -6,8 +6,8 @@ use std::ops::{Add, Mul};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MultivariatePoly<F: PrimeField> {
-    pub(crate) coeffs: Vec<F>,
-    pub(crate) num_vars: usize,
+    pub coeffs: Vec<F>,
+    pub num_vars: usize,
 }
 
 impl<F: PrimeField> MultivariatePoly<F> {

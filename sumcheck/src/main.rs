@@ -1,277 +1,245 @@
-mod multilinear;
-mod transcript;
-
-pub use crate::multilinear::MultivariatePoly;
-pub use crate::transcript::Transcript;
+use ark_ff::{BigInteger, PrimeField};
+use multilinear::multilinear::MultivariatePoly;
+use multilinear::composite::{Composite, OP};
+use prime_polynomail::{self, DensePolynomial};
+use transcript::transcript::{HashTrait, Transcript, TranscriptTrait};
+use std::marker::PhantomData;
+use std::iter::repeat_n;
 
 /// The Sum-Check protocol is a protocol for verifying that the sum of a polynomial over a
 /// boolean hypercube is equal to a claimed value.
-use ark_ff::{BigInteger, PrimeField};
-use prime_polynomail::{self, DensePolynomial};
-use std::marker::PhantomData;
+/// 
+pub fn generate_partial_proof<F: PrimeField, H: HashTrait, T: TranscriptTrait<F>>(poly: &Composite<F>, transcript: &mut T, round_polys: &mut Vec<DensePolynomial<F>>,  challenges: &mut Vec<F>) -> F {
+    let mut poly_eval = poly.clone();
+    let degree = 2;
+    let rounds = poly_eval.polys[0].num_vars as usize;   
+    print!("rounds={:?}", rounds); 
+    let mut partial_evals = vec![];
+    let mut final_eval = F::zero();
 
-#[derive(Clone, Debug)]
-struct SumCheckProof<F: PrimeField> {
-    claimed_sum: F,
-    round_polynomials: Vec<DensePolynomial<F>>,
-    final_evaluation: F,
-}
+    for i in 0..rounds {
+        let mut reduced_poly = poly_eval.reduce();
+        let extra_points = reduced_poly.coeffs.len()/2;
+        let mut index = 0;
 
-/// The Prover in the Sum-Check protocol
-struct Prover<F: PrimeField> {
-    polynomial: MultivariatePoly<F>,
-}
+        repeat_n(0, extra_points).for_each(|_| {
+            let mut values = vec![Some(F::zero()); rounds-i];
+            values = values.iter().enumerate().map( |x| {
+                if x.0 == 0 {
+                    return Some(F::from(2));
+                } else {
+                    // shift to right and find modulus to get the value at that point.
+                    return Some(F::from(index >> (rounds-i - x.0 - 1) & 1));
+                }
+            }).collect();
 
-impl<F: PrimeField> Prover<F> {
-    /// Creates a new Prover instance
-    fn new(polynomial: MultivariatePoly<F>) -> Self {
-        Self { polynomial }
+            let result = poly_eval.evaluate(&values);
+            reduced_poly.coeffs.push(result);
+            index += 1;
+        });
+
+        let mut round_poly = vec![];
+        for j in 0..(degree + 1) {
+            round_poly.push(reduced_poly.coeffs.iter().skip(j * extra_points).take(extra_points).sum());
+        }
+
+        final_eval = round_poly[0] + round_poly[1];
+        // dbg!(&round_poly, final_eval);        
+        partial_evals.push(final_eval);
+        let mut data = vec![final_eval];
+        data.extend(&round_poly);
+        let challenge = add_data_to_transcript::<F, H, T>(&data, transcript);
+        // dbg!(&challenge);
+
+        challenges.push(challenge);
+
+        poly_eval = poly_eval.partial_evaluate(&vec![challenge], 0);
+        round_polys.push(DensePolynomial { coefficients: round_poly });
+
     }
 
-    /// Generates the univariate polynomial for a specific round
-    ///
-    /// # Arguments
-    /// * `round` - Current round number
-    /// * `partial_evaluation` - Previous challenge values
-    fn generate_round_polynomial(
-        &self,
-        round: usize,
-        partial_evaluation: &[F],
-    ) -> DensePolynomial<F> {
-        // Evaluate the polynomial at x = 0 and x = 1 with all previous rounds fixed
-        let eval_0 = self
-            .polynomial
-            .evaluate_at_round(round, partial_evaluation, F::zero());
-        let eval_1 = self
-            .polynomial
-            .evaluate_at_round(round, partial_evaluation, F::one());
+    partial_evals[0]
 
-        // Create degree-1 polynomial through these points:
-        // f(x) = ax + b where:
-        // b = f(0) = eval_0
-        // a = f(1) - f(0) = eval_1 - eval_0
-        let coeffs = vec![
-            eval_0,          // constant term (b)
-            eval_1 - eval_0, // coefficient of x (a)
-        ];
-        DensePolynomial {
-            coefficients: coeffs,
-        }
-    }
+  
 
-    /// Generates the complete Sum-Check proof
-    fn generate_proof(&self) -> SumCheckProof<F> {
-        let claimed_sum = self.polynomial.sum_over_boolean_hypercube();
-        let mut round_polynomials = Vec::new();
-        let mut challenges = Vec::new();
-        let mut partial_evaluation = Vec::new();
-
-        let mut transcript = Transcript::new();
-        transcript.append(
-            self.polynomial
-                .coeffs
-                .iter()
-                .flat_map(|f| f.into_bigint().to_bytes_be())
-                .collect::<Vec<_>>()
-                .as_slice(),
-        );
-        transcript.append(claimed_sum.into_bigint().to_bytes_be().as_slice());
-
-        // Generate proof for each variable
-        for round in 0..self.polynomial.num_vars {
-            let round_poly = self.generate_round_polynomial(round, &partial_evaluation);
-            round_polynomials.push(round_poly.clone());
-
-            transcript.append(
-                round_poly
-                    .coefficients
-                    .iter()
-                    .flat_map(|f| f.into_bigint().to_bytes_be())
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            );
-
-            let challenge = transcript.sample_field_element();
-            challenges.push(challenge);
-            partial_evaluation.push(challenge);
-        }
-
-        let final_evaluation = self.polynomial.evaluate(&partial_evaluation);
-
-        SumCheckProof {
-            claimed_sum,
-            round_polynomials,
-            final_evaluation,
-        }
-    }
 }
 
-/// The Verifier in the Sum-Check protocol
-struct Verifier<F: PrimeField> {
-    _field: PhantomData<F>,
+//write a verify_partial_proof function that takes in the initial sum, the round polynomials, and the transcript, and returns the final sum
+pub fn verify_partial_proof<F: PrimeField, H: HashTrait, T: TranscriptTrait<F>>(initial_sum: F, round_polys: &Vec<DensePolynomial<F>>, transcript: &mut T) -> (F, Vec<F>) {
+    let mut final_sum = initial_sum;
+    let mut challenges = vec![];
+    for (i, round_poly) in round_polys.iter().enumerate() {
+        if final_sum != round_poly.coefficients[0] + round_poly.coefficients[1] {
+            // dbg!(i, final_sum, round_poly.coefficients[0] + round_poly.coefficients[1]);
+            panic!("Invalid proof");
+            return (F::zero(), vec![]);
+        }        
+        let mut data = vec![final_sum];
+        data.extend(&round_poly.coefficients);
+        let challenge
+        = add_data_to_transcript::<F, H, T>(&data, transcript);
+        dbg!(&data);
+        challenges.push(challenge);
+
+        let points = round_polys[i].coefficients.iter().enumerate().map( |x| (F::from(x.0 as u64), x.1.clone())).collect::<Vec<(F, F)>>();
+        let univariate_poly = DensePolynomial::interpolate(&points);
+        dbg!(&univariate_poly);
+        print!("================>>>>>>>>>>>>>>");
+        dbg!(&points);
+        final_sum = univariate_poly.evaluate(challenge);
+        dbg!(&final_sum, challenge);
+    }
+    (final_sum, challenges)
 }
 
-impl<F: PrimeField> Verifier<F> {
-    /// Creates a new Verifier instance
-    fn new() -> Self {
-        Self {
-            _field: PhantomData,
+pub fn verify_partial_proof_2<F: PrimeField, H: HashTrait, T: TranscriptTrait<F>> (sum: F, polys: &Vec<Vec<F>>, transcript: &mut T) -> (F , Vec<F>) {
+    let mut challenges = vec![];
+    let mut challenge;
+    let mut sum = sum;
+
+    for i in 0..polys.len() {
+        if sum != polys[i][0] + polys[i][1] {
+            panic!("Invalid proof for partial sum check");
         }
+
+        let mut data = vec![sum];
+        data.extend(&polys[i]);
+        challenge = add_data_to_transcript::<F, H, T>(&data, transcript);
+        dbg!(&data);
+        challenges.push(challenge);
+
+        let points = polys[i].iter().enumerate().map( |x| (F::from(x.0 as u64), x.1.clone())).collect::<Vec<(F, F)>>();
+        let univariate_poly = DensePolynomial::interpolate(&points);
+        println!("Univariate poly from Nonse");
+        dbg!(&univariate_poly);
+        dbg!(&points);
+        sum = DensePolynomial::evaluate(&univariate_poly, challenge);
+        dbg!(&sum, challenge);
     }
 
-    /// Verifies a Sum-Check proof
-    ///
-    /// # Arguments
-    /// * `proof` - The proof to verify
-    /// * `polynomial` - The original polynomial
-    fn verify_proof(&self, proof: &SumCheckProof<F>, polynomial: &MultivariatePoly<F>) -> bool {
-        if proof.round_polynomials.len() != polynomial.num_vars {
-            return false;
-        }
-
-        let mut challenges = Vec::new();
-        let mut transcript = Transcript::new();
-
-        transcript.append(
-            polynomial
-                .coeffs
-                .iter()
-                .flat_map(|f| f.into_bigint().to_bytes_be())
-                .collect::<Vec<_>>()
-                .as_slice(),
-        );
-        transcript.append(proof.claimed_sum.into_bigint().to_bytes_be().as_slice());
-
-        let mut current_sum = proof.claimed_sum;
-
-        for round_poly in &proof.round_polynomials {
-            // Check polynomial degree is at most 1
-            if round_poly.degree() > 1 {
-                return false;
-            }
-
-            // Verify sum at x=0 and x=1 matches the claimed sum
-            let sum_0 = round_poly.evaluate(F::zero());
-            let sum_1 = round_poly.evaluate(F::one());
-            if sum_0 + sum_1 != current_sum {
-                return false;
-            }
-
-            transcript.append(
-                round_poly
-                    .coefficients
-                    .iter()
-                    .flat_map(|f| f.into_bigint().to_bytes_be())
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            );
-
-            let challenge = transcript.sample_field_element();
-            current_sum = round_poly.evaluate(challenge);
-            challenges.push(challenge);
-        }
-
-        // Final check: verify the claimed evaluation
-        proof.final_evaluation == polynomial.evaluate(&challenges)
-    }
+    (sum, challenges)
 }
 
-fn main() {
+pub fn add_data_to_transcript <F: PrimeField, H: HashTrait, T: TranscriptTrait<F>> (data: &Vec<F>, transcript: &mut T) -> F {
+    let mut bytes = vec![];
+    data.iter().for_each(|x| {
+        bytes.extend(x.into_bigint().to_bytes_be())
+    });
+    transcript.absorb(&bytes);
+    let squeezed = transcript.squeeze();
+    let squeezed_bytes = squeezed.into_bigint().to_bytes_be();
+    let challenge = F::from_be_bytes_mod_order(&squeezed_bytes);
+    return challenge;
+}
+
+
+
+
+
+fn main(){
     println!("Hello, world!");
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ark_bn254::Fr;
+mod tests{
+      // use super::
+      use super::*;
+      use ark_bn254::Fq;
+      use sha3::{Keccak256, Digest};
+      use transcript::transcript::KeccakWrapper;
+  
+    use multilinear::multilinear::MultivariatePoly;
+
 
     #[test]
-    fn test_polynomial_evaluation() {
-        // Test evaluation at point (1,1)
-        let coefficients = vec![
-            Fr::from(0u64), // constant term
-            Fr::from(1u64), // x term
-            Fr::from(1u64), // y term
-            Fr::from(1u64), // xy term
-        ];
-        let polynomial = MultivariatePoly::new(coefficients, 2);
+    fn test_generate_partial_proof() {
+        // 2a + 3
+        let mut poly_a = MultivariatePoly::new(vec![3, 5].iter().map(|x| Fq::from(x.clone())).collect(), 1);
+        poly_a = poly_a.blow_up_right( 2);
+        print!("Polynomail a={:?}", poly_a.coeffs);
 
-        let point = vec![Fr::from(1u64), Fr::from(1u64)];
-        let evaluation = polynomial.evaluate(&point);
+        // 4b + 2a
+        let mut poly_b = MultivariatePoly::new(vec![0, 4, 2, 6].iter().map(|x| Fq::from(x.clone())).collect(), 2);
+        poly_b = poly_b.blow_up_right( 1);
+        print!("Polynomail b={:?}", poly_b.coeffs);
 
-        // f(1,1) = 0 + 1 + 1 + 1 = 3
-        assert_eq!(evaluation, Fr::from(3u64));
-    }
+        // 3c + 2
+        let mut poly_c = MultivariatePoly::new(vec![2, 5].iter().map(|x| Fq::from(x.clone())).collect(), 1);
+        poly_c = poly_c.blow_up_left( 2); 
+        print!("Polynomail c={:?}", poly_c.coeffs);
 
-    #[test]
-    fn test_sumcheck_protocol() {
-        // Test polynomial f(x,y) = x + y + xy
-        let coefficients = vec![
-            Fr::from(0u64), // constant term
-            Fr::from(1u64), // x term
-            Fr::from(1u64), // y term
-            Fr::from(1u64), // xy term
-        ];
-        let polynomial = MultivariatePoly::new(coefficients, 2);
+        // 3c + 2
+        let mut poly_d = MultivariatePoly::new(vec![2, 5].iter().map(|x| Fq::from(x.clone())).collect(), 1);
+        poly_d = poly_d.blow_up_left( 2);        
+        print!("Polynomail d={:?}", poly_d.coeffs); 
 
-        let prover = Prover::new(polynomial.clone());
-        let proof = prover.generate_proof();
+        let composite = Composite::new(
+            &vec![poly_a.coeffs, poly_b.coeffs, poly_c.coeffs, poly_d.coeffs],
+            vec![OP::MUL, OP::ADD, OP::MUL]
+        );
+        print!("Composite={:?}", composite.polys);
 
-        let verifier = Verifier::new();
-        assert!(
-            verifier.verify_proof(&proof, &polynomial),
-            "Sum-Check proof verification failed!"
+        let mut round_polys: Vec<DensePolynomial<Fq>> = vec![];
+        let mut transcript = Transcript::<KeccakWrapper, Fq>::new(KeccakWrapper {
+            keccak: Keccak256::new(),
+        });
+        let mut challenges = vec![];
+        let initial_sum = generate_partial_proof::<Fq, KeccakWrapper, Transcript<KeccakWrapper, Fq>>(&composite, &mut transcript, &mut round_polys, &mut challenges);
+
+        let hasher = KeccakWrapper { keccak: Keccak256::new() };
+        let mut transcript = Transcript::new(hasher);
+        let (sum, challenges) = verify_partial_proof::<Fq, KeccakWrapper, Transcript<KeccakWrapper, Fq>>(initial_sum, &round_polys, &mut transcript);
+
+        assert_eq!(
+            sum,
+            composite.evaluate(&challenges.iter().map(|x| Some(x.clone())).collect())
         );
     }
 
     #[test]
-    fn test_sumcheck() {
-        let poly = MultivariatePoly::new(
-            vec![
-                Fr::from(0u64), // constant term
-                Fr::from(0u64), // x term
-                Fr::from(0u64), // y term
-                Fr::from(3u64), // xy term
-                Fr::from(0u64), // z term
-                Fr::from(0u64), // xz term
-                Fr::from(2u64), // yz term
-                Fr::from(5u64), // xyz term
-            ],
-            3,
+    fn test_generate_partial_proof_2() {
+        // 2a + 3
+        let mut poly_a = MultivariatePoly::new(vec![3, 5].iter().map(|x| Fq::from(x.clone())).collect(), 1);
+        poly_a = poly_a.blow_up_right( 1);
+        // print!("Polynomail a={:?}", poly_a.coeffs);
+
+        // 4b + 2a
+        let mut poly_b = MultivariatePoly::new(vec![0, 4, 2, 6].iter().map(|x| Fq::from(x.clone())).collect(), 2);
+        // poly_b = poly_b.blow_up_right( 1);
+        // print!("Polynomail b={:?}", poly_b.coeffs);
+
+        let mut poly_c = MultivariatePoly::new(vec![2, 5].iter().map(|x| Fq::from(x.clone())).collect(), 1);
+        poly_c = poly_c.blow_up_left( 1); 
+        // print!("Polynomail c={:?}", poly_c.coeffs);
+
+        let composite = Composite::new(
+            &vec![poly_a.coeffs, poly_b.coeffs, poly_c.coeffs],
+            vec![OP::MUL, OP::ADD]
         );
-        let prover = Prover::new(poly.clone());
-        let proof = prover.generate_proof();
+        // print!("Composite={:?}", composite.polys);
 
-        let verifier = Verifier::new();
-        // dbg!(verifier.verify_proof(&proof, &poly));
-        assert!(
-            verifier.verify_proof(&proof, &poly),
-            "Sum-Check proof verification failed!"
-        );
-    }
+        let mut round_polys: Vec<DensePolynomial<Fq>> = vec![];
+        let mut transcript = Transcript::<KeccakWrapper, Fq>::new(KeccakWrapper {
+            keccak: Keccak256::new(),
+        });
+        let mut challenges = vec![];
+        let initial_sum = generate_partial_proof::<Fq, KeccakWrapper, Transcript<KeccakWrapper, Fq>>(&composite, &mut transcript, &mut round_polys, &mut challenges);
 
-    #[test]
-    fn test_sumcheck_failure() {
-        let poly = MultivariatePoly::new(
-            vec![
-                Fr::from(0u64), // constant term
-                Fr::from(1u64), // x term
-                Fr::from(1u64), // y term
-                Fr::from(1u64), // xy term
-            ],
-            2,
-        );
-        let prover = Prover::new(poly.clone());
-        let proof = prover.generate_proof();
+        let hasher = KeccakWrapper { keccak: Keccak256::new() };
+        let mut transcript = Transcript::new(hasher);
 
-        // Modify the proof to make it invalid
-        let mut invalid_proof = proof.clone();
-        invalid_proof.claimed_sum += Fr::from(1u64);
+        let polys_2: Vec<Vec<Fq>> = round_polys.iter().map(|p| p.coefficients.clone()).collect();
+        let (sum_2, challenges_2) = verify_partial_proof_2::<Fq, KeccakWrapper, Transcript<KeccakWrapper, Fq>>(initial_sum, &polys_2, &mut transcript);
 
-        let verifier = Verifier::new();
-        assert!(
-            !verifier.verify_proof(&invalid_proof, &poly),
-            "Sum-Check proof verification should have failed!"
+        let hasher = KeccakWrapper { keccak: Keccak256::new() };
+        let mut transcript = Transcript::new(hasher);
+        let (sum, challenges) = verify_partial_proof::<Fq, KeccakWrapper, Transcript<KeccakWrapper, Fq>>(initial_sum, &round_polys, &mut transcript);
+
+        
+
+        assert_eq!(
+            sum,
+            composite.evaluate(&challenges.iter().map(|x| Some(x.clone())).collect())
         );
     }
 }

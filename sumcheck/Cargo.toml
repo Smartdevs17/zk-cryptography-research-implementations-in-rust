@@ -8,4 +8,7 @@ ark-bn254 = "0.5.0"
 ark-ff = "0.5.0"
 sha3 = "0.10.8"
 prime_polynomail = { path = "../prime_polynomail"}
+multilinear = { path = "../multilinear"}
+transcript = { path = "../transcript"}
+
 

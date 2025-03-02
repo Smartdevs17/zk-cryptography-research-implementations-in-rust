@@ -3,13 +3,13 @@ use sha3::{Keccak256, Digest};
 use std::marker::PhantomData;
 
 // A transcript is a hash function that can be used to generate a random field element
-struct Transcript<K: HashTrait, F: PrimeField> {
+pub struct Transcript<K: HashTrait, F: PrimeField> {
     _field: PhantomData<F>, // Placeholder to hold the field even if we are not using it
     hash_function: K,
 }
 
 impl<K: HashTrait, F: PrimeField> Transcript<K, F> {
-    fn new(hash_function: K) -> Self {
+    pub fn new(hash_function: K) -> Self {
         Transcript {
             _field: PhantomData,
             hash_function,
@@ -17,29 +17,29 @@ impl<K: HashTrait, F: PrimeField> Transcript<K, F> {
     }
 
     // Function to absorb data into the hash function
-    fn absorb(&mut self, data: &[u8]) {
+    pub fn absorb(&mut self, data: &[u8]) {
         self.hash_function.append(data);
     }
 
     // Squeeze will return a field element
-    fn squeeze(&mut self) -> F {
+    pub fn squeeze(&mut self) -> F {
         let hash_output = self.hash_function.generate_hash();
         F::from_be_bytes_mod_order(&hash_output)
     }
 
     // Fiat-Shamir challenge generation
-    fn generate_challenge(&mut self) -> F {
+    pub fn generate_challenge(&mut self) -> F {
         self.squeeze()
     }
 }
 
 // A vector is a growable array, but a slice is a fixed-size array you can only push to a specific index
-trait HashTrait {
+pub trait HashTrait {
     fn append(&mut self, data: &[u8]);
     fn generate_hash(&self) -> Vec<u8>;
 }
 
-struct KeccakWrapper {
+pub struct KeccakWrapper {
     keccak: Keccak256,
 }
 
