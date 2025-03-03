@@ -16,7 +16,7 @@ pub enum Gate {
 
 #[derive(Debug, Clone)]
 pub struct Circuit<F: PrimeField> {
-    layers: Vec<Vec<Gate>>, // Each layer contains a list of gates
+  layers: Vec<Vec<Gate>>, // Each layer contains a list of gates
     _marker: PhantomData<F>,
 }
 

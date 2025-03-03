@@ -387,18 +387,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proof"
-version = "0.1.0"
-dependencies = [
- "ark-bn254",
- "ark-ff",
- "multilinear",
- "prime_polynomail",
- "sha3",
- "transcript",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -472,6 +460,18 @@ checksum = "75872d278a8f37ef87fa0ddbda7802605cb18344497949862c0d4dcb291eba60"
 dependencies = [
  "digest",
  "keccak",
+]
+
+[[package]]
+name = "sumcheck"
+version = "0.1.0"
+dependencies = [
+ "ark-bn254",
+ "ark-ff",
+ "multilinear",
+ "prime_polynomail",
+ "sha3",
+ "transcript",
 ]
 
 [[package]]

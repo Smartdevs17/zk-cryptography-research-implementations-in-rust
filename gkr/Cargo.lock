@@ -184,15 +184,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "circuit"
-version = "0.1.0"
-dependencies = [
- "ark-bn254",
- "ark-ff",
- "rand 0.9.0",
-]
-
-[[package]]
 name = "cpufeatures"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -293,10 +284,10 @@ version = "0.1.0"
 dependencies = [
  "ark-bn254",
  "ark-ff",
- "circuit",
  "multilinear",
  "prime_polynomail",
  "rand 0.9.0",
+ "sumcheck",
  "transcript",
 ]
 
@@ -482,6 +473,18 @@ checksum = "75872d278a8f37ef87fa0ddbda7802605cb18344497949862c0d4dcb291eba60"
 dependencies = [
  "digest",
  "keccak",
+]
+
+[[package]]
+name = "sumcheck"
+version = "0.1.0"
+dependencies = [
+ "ark-bn254",
+ "ark-ff",
+ "multilinear",
+ "prime_polynomail",
+ "sha3",
+ "transcript",
 ]
 
 [[package]]
