@@ -246,101 +246,104 @@ fn apply_alpha_beta <F: PrimeField> (alpha: F, beta: F, challenges: &Vec<F>, for
 }
 
 
-// #[cfg(test)]
-// mod test {
-//   use super::*;
-//   use ark_bn254::Fq;
-//   use sha3::{Keccak256, Digest};  
+#[cfg(test)]
+mod test {
+  use super::*;
+  use ark_bn254::Fq;
+  use sha3::{Keccak256, Digest};  
 
-//   #[test]
-//   fn test_get_add_and_muls() {
-//         let gates = vec![
-//       // layer 1
-//       vec![
-//         Gate::new(0, 1, CIRCUIT_OP::ADD, 0),
-//       ],
-//       vec![
-//         Gate::new(0, 1, CIRCUIT_OP::ADD, 0),
-//         Gate::new(2, 3, CIRCUIT_OP::MUL, 1),
-//       ]
-//     ];
+  #[test]
+  fn test_get_add_and_muls() {
+        let gates = vec![
+      // layer 1
+      vec![
+        Gate::new(0, 1, CIRCUIT_OP::ADD, 0),
+      ],
+      vec![
+        Gate::new(0, 1, CIRCUIT_OP::ADD, 0),
+        Gate::new(2, 3, CIRCUIT_OP::MUL, 1),
+      ]
+    ];
 
-//     let mut circuit: Circuit<Fq> = Circuit::new(
-//       gates
-//     );
+    let mut circuit: Circuit<Fq> = Circuit::new(
+      gates
+    );
 
-//     let inputs: Vec<Fq> = vec![ 1, 2, 3, 4 ].iter().map(|x| Fq::from(*x)).collect();
-//     let mut add_and_muls = vec![];
-//     get_add_and_muls(&circuit, &mut add_and_muls);
+    let inputs: Vec<Fq> = vec![ 1, 2, 3, 4 ].iter().map(|x| Fq::from(*x)).collect();
+    let mut add_and_muls = vec![];
+    get_add_and_muls(&circuit, &mut add_and_muls);
 
-//     assert_eq!(
-//       add_and_muls[0].0.hypercube,
-//       vec![ 0, 1, 0, 0, 0, 0, 0, 0].iter().map(|x| Fq::from(*x as u64)).collect::<Vec<Fq>>()
-//     );
+    assert_eq!(
+      add_and_muls[0].0.coeffs,
+      vec![ 0, 1, 0, 0, 0, 0, 0, 0].iter().map(|x| Fq::from(*x as u64)).collect::<Vec<Fq>>()
+    );
 
-//     assert_eq!(
-//       add_and_muls[0].1.hypercube,
-//       vec![ 0, 0, 0, 0, 0, 0, 0, 0].iter().map(|x| Fq::from(*x as u64)).collect::<Vec<Fq>>()
-//     );
+    assert_eq!(
+      add_and_muls[0].1.coeffs,
+      vec![ 0, 0, 0, 0, 0, 0, 0, 0].iter().map(|x| Fq::from(*x as u64)).collect::<Vec<Fq>>()
+    );
 
-//     assert_eq!(
-//       add_and_muls[1].0.hypercube,
-//       vec![ 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ].iter().map(|x| Fq::from(*x as u64)).collect::<Vec<Fq>>()
-//     );
+    assert_eq!(
+      add_and_muls[1].0.coeffs,
+      vec![ 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ].iter().map(|x| Fq::from(*x as u64)).collect::<Vec<Fq>>()
+    );
 
-//     assert_eq!(
-//       add_and_muls[1].1.hypercube,
-//       vec![ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,].iter().map(|x| Fq::from(*x as u64)).collect::<Vec<Fq>>()
-//     );
-//   }
+    assert_eq!(
+      add_and_muls[1].1.coeffs,
+      vec![ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,].iter().map(|x| Fq::from(*x as u64)).collect::<Vec<Fq>>()
+    );
+  }
 
-//   // 4b + 2a
-//   #[test]
-//   fn test_apply_alpha_beta() {
-//     let poly = MultivariatePoly::new(&vec![0, 4, 3, 7, 2, 6, 5, 9].iter().map(|x| Fq::from(*x)).collect());
-//     let new_poly: MultivariatePoly<Fq> = 
-//       apply_alpha_beta(Fq::from(2), Fq::from(3), &vec![Fq::from(2), Fq::from(3)], &poly);
+  // 4b + 2a
+  #[test]
+  fn test_apply_alpha_beta() {
+    let poly = MultivariatePoly::new(
+      vec![0, 4, 3, 7, 2, 6, 5, 9].iter().map(|x| Fq::from(*x)).collect(),
+      3
+    );
+    let new_poly: MultivariatePoly<Fq> = 
+      apply_alpha_beta(Fq::from(2), Fq::from(3), &vec![Fq::from(2), Fq::from(3)], &poly);
 
-//     assert_eq!(
-//       new_poly.hypercube,
-//       vec![26, 46, 41, 61].iter().map(|x| Fq::from(*x)).collect::<Vec<Fq>>()
-//     )
-//   }
+    assert_eq!(
+      new_poly.coeffs,
+      vec![26, 46, 41, 61].iter().map(|x| Fq::from(*x)).collect::<Vec<Fq>>()
+    )
+  }
 
-//   #[test]
-//   fn test_generate_proof() {
-//     let gates = vec![
-//       // layer 1
-//       vec![
-//         Gate::new(0, 1, CIRCUIT_OP::MUL, 0),
-//       ],   
-//       vec![
-//         Gate::new(0, 1, CIRCUIT_OP::ADD, 0),
-//         Gate::new(2, 3, CIRCUIT_OP::MUL, 1),        
-//       ],
-//       vec![
-//         Gate::new(0, 1, CIRCUIT_OP::ADD, 0),
-//         Gate::new(2, 3, CIRCUIT_OP::MUL, 1),
-//         Gate::new(4, 5, CIRCUIT_OP::MUL, 2),
-//         Gate::new(6, 7, CIRCUIT_OP::ADD, 3)      
-//       ]
-//     ];
+  #[test]
+  fn test_generate_proof() {
+    let gates = vec![
+      // layer 1
+      vec![
+        Gate::new(0, 1, CIRCUIT_OP::MUL, 0),
+      ],   
+      vec![
+        Gate::new(0, 1, CIRCUIT_OP::ADD, 0),
+        Gate::new(2, 3, CIRCUIT_OP::MUL, 1),        
+      ],
+      vec![
+        Gate::new(0, 1, CIRCUIT_OP::ADD, 0),
+        Gate::new(2, 3, CIRCUIT_OP::MUL, 1),
+        Gate::new(4, 5, CIRCUIT_OP::MUL, 2),
+        Gate::new(6, 7, CIRCUIT_OP::ADD, 3)      
+      ]
+    ];
 
-//     let mut circuit: Circuit<Fq> = Circuit::new(
-//       gates
-//     );
+    let mut circuit: Circuit<Fq> = Circuit::new(
+      gates
+    );
 
-//     let inputs: Vec<Fq> = vec![ 1, 2, 3, 4, 5, 6, 7, 8 ].iter().map(|x| Fq::from(*x)).collect();
+    let inputs: Vec<Fq> = vec![ 1, 2, 3, 4, 5, 6, 7, 8 ].iter().map(|x| Fq::from(*x)).collect();
     
-//     let mut hasher = Keccak256::new();
-//     let mut transcript = Transcript::new(hasher);    
-//     let gkr_proof = generate_proof(&mut circuit, &inputs, &mut transcript);
+    let mut hasher = KeccakWrapper { keccak: Keccak256::new() };
+    let mut transcript = Transcript::new(hasher);
+    let gkr_proof = generate_proof::<Fq, KeccakWrapper, Transcript<KeccakWrapper, Fq>>(&mut circuit, &inputs, &mut transcript);
     
-//     hasher = Keccak256::new();
-//     transcript = Transcript::new(hasher);
-//     assert_eq!(
-//       true, 
-//       verify_proof(&mut circuit, &inputs, &mut transcript, gkr_proof)
-//     );
-//   }
-// }
+    hasher = KeccakWrapper { keccak: Keccak256::new() };
+    transcript = Transcript::new(hasher);
+    assert_eq!(
+      true, 
+      verify_proof::<Fq, KeccakWrapper, Transcript<KeccakWrapper, Fq>>(&mut circuit, &inputs, &mut transcript, gkr_proof)
+    );
+  }
+}
