@@ -75,6 +75,25 @@ impl<F: PrimeField> MultivariatePoly<F> {
 
         evaluated_poly[0]
     }
+
+    pub fn solve(&self, values: &Vec<Option<F>>) -> MultivariatePoly<F> {
+        // The values 
+          if 2_usize.pow(values.len() as u32) > self.coeffs.len() {
+            println!("Polynomial is incorrect");
+          }
+          let hypercube = self.coeffs.clone();
+          // log2 of hypercube length gives the number of variables
+          let variable_len = hypercube.len().trailing_zeros() as usize;
+          let mut intermediate_result = MultivariatePoly::new(hypercube, self.num_vars);
+          for (i, value) in values.iter().enumerate() {
+            intermediate_result = match value {
+              Some(_value) => MultivariatePoly::new(MultivariatePoly::partial_evaluate(&intermediate_result.coeffs, variable_len - i - 1, *_value), intermediate_result.num_vars - 1),
+              None => intermediate_result
+            }
+          }
+    
+          intermediate_result
+      }
       
 
     pub fn sum_over_boolean_hypercube(&self) -> F {

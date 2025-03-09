@@ -92,7 +92,7 @@ pub fn verify_partial_proof<F: PrimeField, H: HashTrait, T: TranscriptTrait<F>>(
     (final_sum, challenges)
 }
 
-pub fn verify_partial_proof_2<F: PrimeField, H: HashTrait, T: TranscriptTrait<F>> (sum: F, polys: &Vec<Vec<F>>, transcript: &mut T) -> (F , Vec<F>) {
+pub fn verify_partial_proof_2<F: PrimeField, H: HashTrait, T: TranscriptTrait<F>> (sum: F, polys: &Vec<Vec<F>>, transcript: &mut T) -> (F , Vec<F>, bool) {
     let mut challenges = vec![];
     let mut challenge;
     let mut sum = sum;
@@ -117,7 +117,7 @@ pub fn verify_partial_proof_2<F: PrimeField, H: HashTrait, T: TranscriptTrait<F>
         dbg!(&sum, challenge);
     }
 
-    (sum, challenges)
+    (sum, challenges, true)
 }
 
 pub fn add_data_to_transcript <F: PrimeField, H: HashTrait, T: TranscriptTrait<F>> (data: &Vec<F>, transcript: &mut T) -> F {
@@ -229,7 +229,7 @@ mod tests{
         let mut transcript = Transcript::new(hasher);
 
         let polys_2: Vec<Vec<Fq>> = round_polys.iter().map(|p| p.coefficients.clone()).collect();
-        let (sum_2, challenges_2) = verify_partial_proof_2::<Fq, KeccakWrapper, Transcript<KeccakWrapper, Fq>>(initial_sum, &polys_2, &mut transcript);
+        let (sum_2, challenges_2, sucess) = verify_partial_proof_2::<Fq, KeccakWrapper, Transcript<KeccakWrapper, Fq>>(initial_sum, &polys_2, &mut transcript);
 
         let hasher = KeccakWrapper { keccak: Keccak256::new() };
         let mut transcript = Transcript::new(hasher);
