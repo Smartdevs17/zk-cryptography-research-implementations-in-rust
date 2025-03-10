@@ -76,22 +76,43 @@ impl<F: PrimeField> MultivariatePoly<F> {
         evaluated_poly[0]
     }
 
+    // pub fn solve(&self, values: &Vec<Option<F>>) -> MultivariatePoly<F> {
+    //     // The values 
+    //       if 2_usize.pow(values.len() as u32) > self.coeffs.len() {
+    //         println!("Polynomial is incorrect");
+    //       }
+    //       let hypercube = self.coeffs.clone();
+    //       // log2 of hypercube length gives the number of variables
+    //       let variable_len = hypercube.len().trailing_zeros() as usize;
+    //       let mut intermediate_result = MultivariatePoly::new(hypercube, self.num_vars);
+    //       for (i, value) in values.iter().enumerate() {
+    //         intermediate_result = match value {
+    //           Some(_value) => MultivariatePoly::new(MultivariatePoly::partial_evaluate(&intermediate_result.coeffs, variable_len - i - 1, *_value), intermediate_result.num_vars - 1),
+    //           None => intermediate_result
+    //         }
+    //       }
+    
+    //       intermediate_result
+    //   }    
+
     pub fn solve(&self, values: &Vec<Option<F>>) -> MultivariatePoly<F> {
         // The values 
           if 2_usize.pow(values.len() as u32) > self.coeffs.len() {
             println!("Polynomial is incorrect");
           }
-          let hypercube = self.coeffs.clone();
+          let mut hypercube: Vec<F> = vec![];
+          hypercube.extend( &self.coeffs);
+          let mut intermediate_result: MultivariatePoly<F> = MultivariatePoly::new(self.coeffs.clone(), self.num_vars);
           // log2 of hypercube length gives the number of variables
           let variable_len = hypercube.len().trailing_zeros() as usize;
-          let mut intermediate_result = MultivariatePoly::new(hypercube, self.num_vars);
           for (i, value) in values.iter().enumerate() {
             intermediate_result = match value {
-              Some(_value) => MultivariatePoly::new(MultivariatePoly::partial_evaluate(&intermediate_result.coeffs, variable_len - i - 1, *_value), intermediate_result.num_vars - 1),
+              Some(_value) => MultivariatePoly::new(MultivariatePoly::partial_evaluate(&intermediate_result.coeffs, 0, *_value), intermediate_result.num_vars - 1),
               None => intermediate_result
-            }
+            };
           }
-    
+
+          dbg!(&intermediate_result);
           intermediate_result
       }
       
@@ -331,6 +352,33 @@ mod tests {
         let result = poly.evaluate_partial(&point);
         assert_eq!(result, Fr::from(54u64));
     }
+
+    #[test]
+    fn test_solve() {
+        let first = MultivariatePoly::new(
+          vec![
+            Fr::from(0),
+            Fr::from(0),
+            Fr::from(3),
+            Fr::from(3),
+            Fr::from(0),
+            Fr::from(2),
+            Fr::from(5),
+            Fr::from(7),
+          ],
+            3
+        ); 
+    
+        assert_eq!(
+          first.solve(&vec![
+            Some(Fr::from(2)),
+            Some(Fr::from(3)),
+            Some(Fr::from(2))
+          ]).coeffs,
+          vec![Fr::from(29)]
+        );
+      }
+    
 
 }
 
