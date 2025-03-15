@@ -40,9 +40,11 @@ fn generate_proof<F: PrimeField, H: HashTrait, T: TranscriptTrait<F>>(circuit: &
   if _w.len() == 1 {
       _w = vec![_w[0], F::zero()];
   }
-  let num_variables = (circuit.layers[0].len() as f64).log2().ceil() as usize;
+  let num_variables = (_w.len() as f64).log2().ceil() as usize;
+  dbg!(num_variables);
+  dbg!(&_w);
+  println!("=============?????????>>>>>>>>>working");
   let w_i = MultivariatePoly::new(_w, num_variables);
-
   let challenges_length = next_pow_of_2(w_i.coeffs.len());
   let mut challenges = vec![F::zero(); challenges_length];
   add_data_to_transcript::<F, H, T>(&w_i.coeffs, transcript);
@@ -109,9 +111,7 @@ fn generate_proof<F: PrimeField, H: HashTrait, T: TranscriptTrait<F>>(circuit: &
 
 
 
-fn verify_proof<F: PrimeField, H: HashTrait, T: TranscriptTrait<F>> (circuit: &mut Circuit<F>, inputs: &Vec<F>, transcript: &mut T, gkr_proof: GKR_PROOF<F>) -> bool {
-
-  let mut add_and_muls = vec![];
+fn verify_proof<F: PrimeField, H: HashTrait, T: TranscriptTrait<F>> (circuit: &mut Circuit<F>, inputs: &Vec<F>, transcript: &mut T, gkr_proof: GKR_PROOF<F>) -> bool {  let mut add_and_muls = vec![];
   get_add_and_muls(&circuit, &mut add_and_muls);
 
   let evaluations = gkr_proof.evaluations;
@@ -123,6 +123,8 @@ fn verify_proof<F: PrimeField, H: HashTrait, T: TranscriptTrait<F>> (circuit: &m
   let mut _w = gkr_proof.output;
   if _w.len() == 1 { _w.push(F::zero()) }
   let num_variables = (_w.len() as f64).log2().ceil() as usize;
+  dbg!(num_variables);
+  dbg!(&_w);
   let w_i = MultivariatePoly::new(_w, num_variables);
 
   let challenges_length = next_pow_of_2(w_i.coeffs.len());  
@@ -311,40 +313,40 @@ mod test {
     )
   }
 
-  // #[test]
-  // fn test_generate_proof() {
-  //   let gates = vec![
-  //     // layer 1
-  //     vec![
-  //       Gate::new(0, 1, CIRCUIT_OP::MUL, 0),
-  //     ],   
-  //     vec![
-  //       Gate::new(0, 1, CIRCUIT_OP::ADD, 0),
-  //       Gate::new(2, 3, CIRCUIT_OP::MUL, 1),        
-  //     ],
-  //     vec![
-  //       Gate::new(0, 1, CIRCUIT_OP::ADD, 0),
-  //       Gate::new(2, 3, CIRCUIT_OP::MUL, 1),
-  //       Gate::new(4, 5, CIRCUIT_OP::MUL, 2),
-  //       Gate::new(6, 7, CIRCUIT_OP::ADD, 3)      
-  //     ]
-  //   ];
+  #[test]
+  fn test_generate_proof() {
+    let gates = vec![
+      // layer 1
+      vec![
+        Gate::new(0, 1, CIRCUIT_OP::MUL, 0),
+      ],   
+      vec![
+        Gate::new(0, 1, CIRCUIT_OP::ADD, 0),
+        Gate::new(2, 3, CIRCUIT_OP::MUL, 1),        
+      ],
+      vec![
+        Gate::new(0, 1, CIRCUIT_OP::ADD, 0),
+        Gate::new(2, 3, CIRCUIT_OP::MUL, 1),
+        Gate::new(4, 5, CIRCUIT_OP::MUL, 2),
+        Gate::new(6, 7, CIRCUIT_OP::ADD, 3)      
+      ]
+    ];
 
-  //   let mut circuit: Circuit<Fq> = Circuit::new(
-  //     gates
-  //   );
+    let mut circuit: Circuit<Fq> = Circuit::new(
+      gates
+    );
 
-  //   let inputs: Vec<Fq> = vec![ 1, 2, 3, 4, 5, 6, 7, 8 ].iter().map(|x| Fq::from(*x)).collect();
+    let inputs: Vec<Fq> = vec![ 1, 2, 3, 4, 5, 6, 7, 8 ].iter().map(|x| Fq::from(*x)).collect();
     
-  //   let mut hasher = KeccakWrapper { keccak: Keccak256::new() };
-  //   let mut transcript = Transcript::new(hasher);
-  //   let gkr_proof = generate_proof::<Fq, KeccakWrapper, Transcript<KeccakWrapper, Fq>>(&mut circuit, &inputs, &mut transcript);
+    let mut hasher = KeccakWrapper { keccak: Keccak256::new() };
+    let mut transcript = Transcript::new(hasher);
+    let gkr_proof = generate_proof::<Fq, KeccakWrapper, Transcript<KeccakWrapper, Fq>>(&mut circuit, &inputs, &mut transcript);
     
-  //   hasher = KeccakWrapper { keccak: Keccak256::new() };
-  //   transcript = Transcript::new(hasher);
-  //   assert_eq!(
-  //     true, 
-  //     verify_proof::<Fq, KeccakWrapper, Transcript<KeccakWrapper, Fq>>(&mut circuit, &inputs, &mut transcript, gkr_proof)
-  //   );
-  // }
+    hasher = KeccakWrapper { keccak: Keccak256::new() };
+    transcript = Transcript::new(hasher);
+    assert_eq!(
+      true, 
+      verify_proof::<Fq, KeccakWrapper, Transcript<KeccakWrapper, Fq>>(&mut circuit, &inputs, &mut transcript, gkr_proof)
+    );
+  }
 }
